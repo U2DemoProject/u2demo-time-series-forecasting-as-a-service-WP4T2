@@ -1,34 +1,32 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypeAlias
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field, StringConstraints
 
-type QuantileKey = Annotated[str, StringConstraints(pattern=r"^(0(\.\d+)?|1(\.0+)?)$")]
-type QuantileLevel = Annotated[float, Field(ge=0, le=1)]
+
+QuantileKey: TypeAlias = Annotated[str, StringConstraints(pattern=r"^(0(\.\d+)?|1(\.0+)?)$")]
+QuantileLevel: TypeAlias = Annotated[float, Field(ge=0, le=1)]
 
 
 class TimeValue(BaseModel):
     """Generic timestamp–value pair aligned with SAREF (saref:hasTimestamp, saref:hasValue)."""
-
     time: datetime = Field(..., description="Timestamp of the measurement")
     value: float = Field(..., description="Measured or scheduled numeric value")
 
 
 class ForecastedTimeValue(TimeValue):
     """Extends TimeValue with probabilistic forecast information."""
-
     quantiles: dict[QuantileKey, float] | None = Field(
         default=None,
         description="Quantile predictions at this timestep. Keys are quantile levels (0-1), values are the predicted value at that quantile."
     )
 
 
-type ForecastType = Literal["deterministic", "stochastic"]
+ForecastType: TypeAlias = Literal["deterministic", "stochastic"]
 
 
 class TimeParameters(BaseModel):
     """Time-related configuration parameters for forecasting."""
-
     timestep_minutes: int | None = Field(
         default=None, ge=1, description="Length of a single time step in minutes."
     )
@@ -43,7 +41,6 @@ class TimeParameters(BaseModel):
 
 class TrainingSplit(BaseModel):
     """Train/validation/test split configuration."""
-
     train_ratio: float = Field(
         default=0.7, ge=0, le=1, description="Fraction of data used for training."
     )
@@ -57,7 +54,6 @@ class TrainingSplit(BaseModel):
 
 class ModelConfig(BaseModel):
     """Configuration parameters for the training process."""
-
     model_config = ConfigDict(extra="allow")
 
     model_id: str = Field(..., description="Unique identifier for this model instance.")
@@ -85,7 +81,6 @@ class ModelConfig(BaseModel):
 
 class BaseSeries(BaseModel):
     """Common identified time series metadata."""
-
     model_config = ConfigDict(extra="allow")
 
     series_id: str = Field(..., description="Unique identifier for this series.")
@@ -103,7 +98,6 @@ class BaseSeries(BaseModel):
 
 class TrainingTargetSeries(BaseSeries):
     """Target series shape used by ForecastTrainingInputDM."""
-
     training_values: list[TimeValue] = Field(
         ...,
         min_length=2,
@@ -113,7 +107,6 @@ class TrainingTargetSeries(BaseSeries):
 
 class ForecastTargetSeries(BaseSeries):
     """Target series shape used by ForecastInputDM."""
-
     historical_values: list[TimeValue] = Field(
         ...,
         min_length=1,
@@ -123,7 +116,6 @@ class ForecastTargetSeries(BaseSeries):
 
 class BaseExogenousSeries(BaseModel):
     """Common exogenous time series metadata."""
-
     model_config = ConfigDict(extra="allow")
 
     series_id: str = Field(..., description="Unique identifier for this exogenous series.")
@@ -134,7 +126,6 @@ class BaseExogenousSeries(BaseModel):
 
 class TrainingExogenousSeries(BaseExogenousSeries):
     """Exogenous series shape used by ForecastTrainingInputDM."""
-
     training_values: list[TimeValue] | None = Field(
         ...,
         min_length=2,
@@ -144,7 +135,6 @@ class TrainingExogenousSeries(BaseExogenousSeries):
 
 class ForecastExogenousSeries(BaseExogenousSeries):
     """Exogenous series shape used by ForecastInputDM."""
-
     historical_values: list[TimeValue] = Field(
         ...,
         min_length=1,
@@ -158,14 +148,12 @@ class ForecastExogenousSeries(BaseExogenousSeries):
 
 class Location(BaseModel):
     """Geographic location aligned with WGS84."""
-
     latitude: float = Field(ge=-90, le=90, description="Latitude in decimal degrees (WGS84).")
     longitude: float = Field(ge=-180, le=180, description="Longitude in decimal degrees (WGS84).")
 
 
 class ForecastTrainingInput(BaseModel):
     """Input data model for training a forecasting model."""
-
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     forecast_type: ForecastType = Field(
@@ -193,7 +181,6 @@ class ForecastTrainingInput(BaseModel):
 
 class ForecastInput(BaseModel):
     """Input data model for a forecasting request."""
-
     model_config = ConfigDict(extra="allow")
 
     forecast_type: ForecastType = Field(
@@ -217,7 +204,6 @@ class ForecastInput(BaseModel):
 
 class ForecastSeries(BaseModel):
     """A forecast time series for a specific variable/asset combination."""
-
     model_config = ConfigDict(extra="allow")
 
     series_id: str = Field(..., description="Unique identifier for this forecast series.")
@@ -236,7 +222,6 @@ class ForecastSeries(BaseModel):
 
 class Forecast(BaseModel):
     """Forecast data model with identified time series and optional probabilistic information."""
-
     model_config = ConfigDict(extra="allow")
 
     forecast_type: ForecastType = Field(

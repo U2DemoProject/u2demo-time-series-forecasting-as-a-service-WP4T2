@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 
@@ -15,7 +15,6 @@ router = APIRouter()
 
 @router.post("/models", status_code=201)
 def create_model(request: CreateModelRequest) -> dict:
-    """Create persisted metadata for a new model id."""
     settings = get_settings()
     metadata_service = MetadataService(settings.metadata_dir)
     metadata_service.create(request)
@@ -24,7 +23,6 @@ def create_model(request: CreateModelRequest) -> dict:
 
 @router.get("/models", response_model=ModelListResponse)
 def list_models() -> ModelListResponse:
-    """List all registered model metadata records."""
     settings = get_settings()
     metadata_service = MetadataService(settings.metadata_dir)
     return ModelListResponse(models=metadata_service.list_models())
@@ -32,7 +30,6 @@ def list_models() -> ModelListResponse:
 
 @router.get("/models/{model_id}", response_model=ModelInfoResponse)
 def get_model(model_id: str) -> ModelInfoResponse:
-    """Return metadata for a single model id."""
     settings = get_settings()
     metadata_service = MetadataService(settings.metadata_dir)
     try:
@@ -44,7 +41,6 @@ def get_model(model_id: str) -> ModelInfoResponse:
 
 @router.post("/models/{model_id}/train", status_code=202)
 def train_model(model_id: str, request: TrainRequest) -> dict:
-    """Queue or run training for a model, depending on backend mode."""
     settings = get_settings()
 
     if settings.jobs_backend == "memory":
@@ -60,7 +56,7 @@ def train_model(model_id: str, request: TrainRequest) -> dict:
     payload = {
         "model_id": model_id,
         "request": request.model_dump(mode="json"),
-        "submitted_at": datetime.now(UTC).isoformat(),
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
     }
     job_id = job_backend.enqueue(task_name="train", payload=payload)
     return {"job_id": job_id, "model_id": model_id, "status": "queued"}
@@ -68,7 +64,6 @@ def train_model(model_id: str, request: TrainRequest) -> dict:
 
 @router.post("/models/{model_id}/forecast", status_code=202)
 def forecast_model(model_id: str, request: ForecastRequest) -> dict:
-    """Queue or run forecasting for a model, depending on backend mode."""
     settings = get_settings()
 
     if settings.jobs_backend == "memory":
@@ -84,7 +79,7 @@ def forecast_model(model_id: str, request: ForecastRequest) -> dict:
     payload = {
         "model_id": model_id,
         "request": request.model_dump(mode="json"),
-        "submitted_at": datetime.now(UTC).isoformat(),
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
     }
     job_id = job_backend.enqueue(task_name="forecast", payload=payload)
     return {"job_id": job_id, "model_id": model_id, "status": "queued"}

@@ -5,14 +5,12 @@ from typing import Any
 
 import requests
 
-from app.core.errors import SourceValidationError
+from app.core.errors import ModelNotFoundError, SourceValidationError
 from app.repositories.base import ModelRepository
 from app.schemas.common import UrlModelSourceConfig
 
 
 class UrlModelRepository(ModelRepository):
-    """Model repository backed by remote URL download with local cache."""
-
     def __init__(self, cache_dir: Path, source_config: UrlModelSourceConfig) -> None:
         self.cache_dir = cache_dir
         self.source_config = source_config
@@ -35,14 +33,12 @@ class UrlModelRepository(ModelRepository):
         return resp.content
 
     def save_model(self, model_id: str, version: str, payload: dict[str, Any]) -> str:
-        """Persist payload in local cache for the given model version."""
         target = self._cache_file(model_id, version)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         return str(target)
 
     def load_model(self, model_id: str, version: str) -> dict[str, Any]:
-        """Load payload from cache or download and validate it from source URL."""
         target = self._cache_file(model_id, version)
 
         if target.exists():
@@ -64,5 +60,4 @@ class UrlModelRepository(ModelRepository):
         return payload
 
     def model_exists(self, model_id: str, version: str) -> bool:
-        """Return whether local cached payload exists for this model version."""
         return self._cache_file(model_id, version).exists()

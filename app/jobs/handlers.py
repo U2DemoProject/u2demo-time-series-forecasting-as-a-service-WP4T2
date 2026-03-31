@@ -11,7 +11,6 @@ def _runtime() -> ModelRuntimeService:
 
 
 def train_task(payload: dict) -> dict:
-    """Run training task payload inside the worker process."""
     request = TrainRequest.model_validate(payload["request"])
     model_id = payload["model_id"]
     runtime = _runtime()
@@ -19,7 +18,6 @@ def train_task(payload: dict) -> dict:
 
 
 def forecast_task(payload: dict) -> dict:
-    """Run forecasting task payload inside the worker process."""
     request = ForecastRequest.model_validate(payload["request"])
     model_id = payload["model_id"]
     runtime = _runtime()

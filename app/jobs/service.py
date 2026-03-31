@@ -6,7 +6,6 @@ from app.jobs.backends import InMemoryJobBackend, JobBackend, RedisRQBackend
 
 @lru_cache(maxsize=1)
 def get_job_backend() -> JobBackend:
-    """Return cached job backend implementation based on settings."""
     settings = get_settings()
 
     if settings.jobs_backend == "memory":

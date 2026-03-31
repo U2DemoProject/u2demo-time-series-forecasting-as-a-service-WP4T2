@@ -7,7 +7,6 @@ router = APIRouter()
 
 @router.get("/jobs/{job_id}")
 def get_job_status(job_id: str) -> dict:
-    """Return job execution status for the provided job identifier."""
     backend = get_job_backend()
     try:
         return backend.get_status(job_id)

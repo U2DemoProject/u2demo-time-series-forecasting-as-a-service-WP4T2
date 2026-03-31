@@ -3,16 +3,13 @@ from typing import Any
 import requests
 
 from app.core.errors import SourceValidationError
-from app.schemas.common import UrlDataSourceConfig
+from app.schemas.common import UrlRequestConfig
 from app.sources.base import DataSource
 
 
 class UrlDataSource(DataSource):
-    """Data source that fetches JSON payload from a remote HTTP endpoint."""
-
-    def fetch(self, config: UrlDataSourceConfig) -> dict[str, Any]:
-        """Execute configured HTTP request and return JSON response body."""
-        request = config.request
+    def fetch(self, context: dict[str, Any]) -> dict[str, Any]:
+        request = UrlRequestConfig.model_validate(context)
 
         try:
             response = requests.request(
