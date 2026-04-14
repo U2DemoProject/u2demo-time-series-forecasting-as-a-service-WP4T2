@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 
 from app.repositories.base import ModelRepository
 from app.repositories.url_repository import UrlModelRepository
@@ -16,7 +17,7 @@ class ModelRepositoryFactory:
             return VolumeModelRepository(models_dir)
 
         if source_config.type == "url":
-            url_config = UrlModelSourceConfig.model_validate(source_config.model_dump())
+            url_config = cast("UrlModelSourceConfig", source_config)
             return UrlModelRepository(cache_dir=cache_dir, source_config=url_config)
 
         raise ValueError(f"Unsupported model source type: {source_config.type}")

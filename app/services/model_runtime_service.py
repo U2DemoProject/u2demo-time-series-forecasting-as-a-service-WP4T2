@@ -19,7 +19,7 @@ class ModelRuntimeService:
     def train(self, model_id: str, request: TrainRequest) -> dict[str, Any]:
         """Train a model placeholder artifact and persist it with a new version."""
         data_source = DataSourceFactory.create(request.data_source)
-        dataset = data_source.fetch(request.data_source.model_dump().get("payload") or request.data_source.model_dump().get("request", {}))
+        dataset = data_source.fetch(request.data_source)
 
         version = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         repository = ModelRepositoryFactory.create(request.model_source, self.models_dir, self.cache_dir)
@@ -46,7 +46,7 @@ class ModelRuntimeService:
             version = metadata.versions[-1]
 
         data_source = DataSourceFactory.create(request.data_source)
-        dataset = data_source.fetch(request.data_source.model_dump().get("payload") or request.data_source.model_dump().get("request", {}))
+        dataset = data_source.fetch(request.data_source)
         repository = ModelRepositoryFactory.create(request.model_source, self.models_dir, self.cache_dir)
         artifact = repository.load_model(model_id=model_id, version=version)
 
