@@ -1,10 +1,10 @@
 class ModelNotFoundError(Exception):
-    pass
+    """Raised when model metadata or artifacts cannot be found."""
 
 
 class JobNotFoundError(Exception):
-    pass
+    """Raised when a job id cannot be found in the backend."""
 
 
 class SourceValidationError(Exception):
-    pass
+    """Raised when input sources fail validation or retrieval."""

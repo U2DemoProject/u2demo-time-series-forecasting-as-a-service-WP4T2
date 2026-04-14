@@ -7,8 +7,11 @@ from app.schemas.common import ModelSourceConfig, UrlModelSourceConfig
 
 
 class ModelRepositoryFactory:
+    """Factory for resolving concrete model repository implementations."""
+
     @staticmethod
     def create(source_config: ModelSourceConfig, models_dir: Path, cache_dir: Path) -> ModelRepository:
+        """Instantiate a repository based on model source configuration."""
         if source_config.type == "volume":
             return VolumeModelRepository(models_dir)
 

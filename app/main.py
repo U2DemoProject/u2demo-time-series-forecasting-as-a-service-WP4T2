@@ -11,9 +11,11 @@ app.include_router(api_router, prefix=settings.api_prefix)
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    """Liveness probe endpoint."""
     return {"status": "ok"}
 
 
 @app.get("/ready")
 def ready() -> dict[str, str]:
+    """Readiness probe endpoint."""
     return {"status": "ready"}

@@ -8,7 +8,10 @@ from app.sources.base import DataSource
 
 
 class UrlDataSource(DataSource):
+    """Data source that fetches JSON payload from a remote HTTP endpoint."""
+
     def fetch(self, context: dict[str, Any]) -> dict[str, Any]:
+        """Execute configured HTTP request and return JSON response body."""
         request = UrlRequestConfig.model_validate(context)
 
         try:

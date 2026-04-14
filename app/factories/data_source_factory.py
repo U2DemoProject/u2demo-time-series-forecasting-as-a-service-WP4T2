@@ -5,8 +5,11 @@ from app.sources.url_source import UrlDataSource
 
 
 class DataSourceFactory:
+    """Factory for resolving concrete data source implementations."""
+
     @staticmethod
     def create(config: InlineDataSourceConfig | UrlDataSourceConfig) -> DataSource:
+        """Instantiate a data source based on the provided config type."""
         if config.type == "inline":
             return InlineDataSource()
         if config.type == "url":

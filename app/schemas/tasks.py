@@ -3,11 +3,12 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.schemas.common import DataSourceConfig, ModelSourceConfig, VolumeModelSourceConfig
-from app.schemas.forecast_models import ForecastTrainingInput, ForecastInput
+from app.schemas.forecast_models import ForecastInput, ForecastTrainingInput
 
 
 class TrainRequest(BaseModel):
     """Training request with data source and optional forecast training input schema."""
+
     data_source: DataSourceConfig = Field(
         ..., description="Data source configuration (inline or URL)."
     )
@@ -26,6 +27,7 @@ class TrainRequest(BaseModel):
 
 class ForecastRequest(BaseModel):
     """Forecast request with data source and optional forecast input schema."""
+
     version: str = Field(
         default="latest", description="Model version to use for forecast."
     )
