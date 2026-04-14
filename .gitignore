@@ -7,13 +7,9 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 coverage.xml
-htmlcov/
 storage/models/*
 !storage/models/.gitkeep
 storage/metadata/*
 !storage/metadata/.gitkeep
 storage/cache/*
 !storage/cache/.gitkeep
-.rendered/*
-*.rendered.md
-U2DemoDataModels/*
