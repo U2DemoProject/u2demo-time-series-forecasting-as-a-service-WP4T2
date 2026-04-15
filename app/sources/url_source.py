@@ -7,7 +7,7 @@ from app.schemas.common import UrlDataSourceConfig
 from app.sources.base import DataSource
 
 
-class UrlDataSource(DataSource):
+class UrlDataSource(DataSource[UrlDataSourceConfig]):
     """Data source that fetches JSON payload from a remote HTTP endpoint."""
 
     def fetch(self, config: UrlDataSourceConfig) -> dict[str, Any]:

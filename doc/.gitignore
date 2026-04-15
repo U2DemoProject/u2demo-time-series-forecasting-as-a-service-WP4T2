@@ -1,0 +1,4 @@
+# Generated render assets (e.g., mermaid outputs)
+.rendered/
+# Generated rendered markdown files
+*.rendered.md

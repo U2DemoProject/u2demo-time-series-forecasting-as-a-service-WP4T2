@@ -1,47 +1,47 @@
-from typing import Any
-
 from pydantic import BaseModel, Field
 
-from app.schemas.common import DataSourceConfig, ModelSourceConfig, VolumeModelSourceConfig
+from app.schemas.common import DataSourceConfig
 from app.schemas.forecast_models import ForecastInput, ForecastTrainingInput
 
 
 class TrainRequest(BaseModel):
-    """Training request with data source and optional forecast training input schema."""
+    """
+    Training request.
 
-    data_source: DataSourceConfig = Field(
-        ..., description="Data source configuration (inline or URL)."
+    Provide either ``forecast_training_input`` directly (takes precedence) or
+    a ``data_source`` whose payload is a ``ForecastTrainingInput``-shaped dict
+    (useful for fetching training data from a remote URL).
+    """
+
+    data_source: DataSourceConfig | None = Field(
+        default=None,
+        description="Data source whose payload is a ForecastTrainingInput dict (inline or URL).",
     )
     forecast_training_input: ForecastTrainingInput | None = Field(
         default=None,
-        description="Optional forecast-specific training input schema with model config, time parameters, and metadata."
-    )
-    hyperparameters: dict[str, Any] = Field(
-        default_factory=dict, description="Additional hyperparameters for training."
-    )
-    model_source: ModelSourceConfig = Field(
-        default_factory=VolumeModelSourceConfig,
-        description="Model storage source configuration."
+        description="Typed training input (takes precedence over data_source payload).",
     )
 
 
 class ForecastRequest(BaseModel):
-    """Forecast request with data source and optional forecast input schema."""
+    """
+    Forecast request.
+
+    Provide either ``forecast_input`` directly (takes precedence) or a
+    ``data_source`` whose payload is a ``ForecastInput``-shaped dict.
+    ``version`` overrides the model version resolved from metadata when set to
+    something other than ``'latest'``.
+    """
 
     version: str = Field(
-        default="latest", description="Model version to use for forecast."
+        default="latest",
+        description="Model version to use. 'latest' resolves to the most recently trained version.",
     )
-    horizon: int = Field(
-        default=1, ge=1, description="Number of timesteps to forecast."
-    )
-    data_source: DataSourceConfig = Field(
-        ..., description="Data source configuration (inline or URL)."
+    data_source: DataSourceConfig | None = Field(
+        default=None,
+        description="Data source whose payload is a ForecastInput dict (inline or URL).",
     )
     forecast_input: ForecastInput | None = Field(
         default=None,
-        description="Optional forecast-specific input schema with time parameters and location."
-    )
-    model_source: ModelSourceConfig = Field(
-        default_factory=VolumeModelSourceConfig,
-        description="Model storage source configuration."
+        description="Typed forecast input (takes precedence over data_source payload).",
     )

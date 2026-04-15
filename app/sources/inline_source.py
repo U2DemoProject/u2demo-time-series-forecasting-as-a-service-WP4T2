@@ -1,8 +1,10 @@
+from typing import Any
+
 from app.schemas.common import InlineDataSourceConfig
 from app.sources.base import DataSource
 
 
-class InlineDataSource(DataSource):
+class InlineDataSource(DataSource[InlineDataSourceConfig]):
     """Data source that directly returns inline request payload content."""
 
     def fetch(self, config: InlineDataSourceConfig) -> dict[str, Any]:

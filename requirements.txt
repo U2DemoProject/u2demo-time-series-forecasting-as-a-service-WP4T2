@@ -1,7 +1,8 @@
 fastapi==0.115.12
 uvicorn[standard]==0.34.0
-pydantic==2.11.2
-pydantic-settings==2.8.1
+pydantic>=2.12.5
+pydantic-settings>=2.8.1
 requests==2.32.3
 redis==5.2.1
 rq==1.16.2
+u2 @ git+https://git.eifer.kit.edu/dev-team/u2-demo/u2-time-series-prediction-final.git
