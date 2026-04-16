@@ -1,0 +1,11 @@
+{
+  "pythonVersion": "3.12",
+  "include": [
+    "app",
+    "worker.py"
+  ],
+  "exclude": [
+    "**/.venv",
+    "app/schemas/forecast_models.py"
+  ]
+}
