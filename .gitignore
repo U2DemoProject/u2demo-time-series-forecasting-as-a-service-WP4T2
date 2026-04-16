@@ -1,0 +1,22 @@
+# Python bytecode and cache artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local virtual environment and developer-only environment vars
+.venv/
+.env
+
+# Test/type-check caches and generated coverage summary
+.pytest_cache/
+.mypy_cache/
+coverage.xml
+
+# Runtime model and metadata artifacts (keep folder placeholders tracked)
+storage/models/*
+!storage/models/.gitkeep
+storage/metadata/*
+!storage/metadata/.gitkeep
+storage/cache/*
+!storage/cache/.gitkeep

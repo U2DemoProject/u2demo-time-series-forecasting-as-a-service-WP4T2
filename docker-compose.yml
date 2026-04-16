@@ -1,0 +1,51 @@
+services:
+  api:
+    build: .
+    container_name: tsaas-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      APP_ENV: dev
+      APP_NAME: tsaas
+      API_PREFIX: /api/v1
+      REDIS_URL: redis://redis:6379/0
+      MODELS_DIR: /app/storage/models
+      METADATA_DIR: /app/storage/metadata
+      CACHE_DIR: /app/storage/cache
+      JOBS_BACKEND: redis
+      ALLOWED_DATA_HOSTS: "*"
+      ALLOWED_MODEL_HOSTS: "*"
+    volumes:
+      - ./app:/app/app
+      - ./worker.py:/app/worker.py
+      - ./storage:/app/storage
+    ports:
+      - "${API_HOST_PORT:-8001}:8000"
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    container_name: tsaas-worker
+    command: python worker.py
+    environment:
+      APP_ENV: dev
+      APP_NAME: tsaas
+      REDIS_URL: redis://redis:6379/0
+      MODELS_DIR: /app/storage/models
+      METADATA_DIR: /app/storage/metadata
+      CACHE_DIR: /app/storage/cache
+      JOBS_BACKEND: redis
+      ALLOWED_DATA_HOSTS: "*"
+      ALLOWED_MODEL_HOSTS: "*"
+    volumes:
+      - ./app:/app/app
+      - ./worker.py:/app/worker.py
+      - ./storage:/app/storage
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: tsaas-redis
+    ports:
+      - "6379:6379"

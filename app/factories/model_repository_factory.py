@@ -1,0 +1,23 @@
+from pathlib import Path
+from typing import cast
+
+from app.repositories.base import ModelRepository
+from app.repositories.url_repository import UrlModelRepository
+from app.repositories.volume_repository import VolumeModelRepository
+from app.schemas.common import ModelSourceConfig, UrlModelSourceConfig
+
+
+class ModelRepositoryFactory:
+    """Factory for resolving concrete model repository implementations."""
+
+    @staticmethod
+    def create(source_config: ModelSourceConfig, models_dir: Path, cache_dir: Path) -> ModelRepository:
+        """Instantiate a repository based on model source configuration."""
+        if source_config.type == "volume":
+            return VolumeModelRepository(models_dir)
+
+        if source_config.type == "url":
+            url_config = cast("UrlModelSourceConfig", source_config)
+            return UrlModelRepository(cache_dir=cache_dir, source_config=url_config)
+
+        raise ValueError(f"Unsupported model source type: {source_config.type}")
