@@ -1,11 +1,14 @@
 services:
   api:
-    build: .
-    container_name: tsaas-api
+    build:
+      context: .
+      args:
+        GIT_TOKEN: ${GIT_TOKEN}
+    container_name: tsfaas-api
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       APP_ENV: dev
-      APP_NAME: tsaas
+      APP_NAME: tsfaas
       API_PREFIX: /api/v1
       REDIS_URL: redis://redis:6379/0
       MODELS_DIR: /app/storage/models
@@ -14,6 +17,7 @@ services:
       JOBS_BACKEND: redis
       ALLOWED_DATA_HOSTS: "*"
       ALLOWED_MODEL_HOSTS: "*"
+      MODEL_PATH: /app/storage/models
     volumes:
       - ./app:/app/app
       - ./worker.py:/app/worker.py
@@ -24,12 +28,15 @@ services:
       - redis
 
   worker:
-    build: .
-    container_name: tsaas-worker
+    build:
+      context: .
+      args:
+        GIT_TOKEN: ${GIT_TOKEN}
+    container_name: tsfaas-worker
     command: python worker.py
     environment:
       APP_ENV: dev
-      APP_NAME: tsaas
+      APP_NAME: tsfaas
       REDIS_URL: redis://redis:6379/0
       MODELS_DIR: /app/storage/models
       METADATA_DIR: /app/storage/metadata
@@ -37,6 +44,7 @@ services:
       JOBS_BACKEND: redis
       ALLOWED_DATA_HOSTS: "*"
       ALLOWED_MODEL_HOSTS: "*"
+      MODEL_PATH: /app/storage/models
     volumes:
       - ./app:/app/app
       - ./worker.py:/app/worker.py
@@ -46,6 +54,6 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    container_name: tsaas-redis
+    container_name: tsfaas-redis
     ports:
       - "6379:6379"

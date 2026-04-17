@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = Field(default="tsaas", alias="APP_NAME")
+    app_name: str = Field(default="tsfaas", alias="APP_NAME")
     app_env: str = Field(default="dev", alias="APP_ENV")
     api_prefix: str = Field(default="/api/v1", alias="API_PREFIX")
 

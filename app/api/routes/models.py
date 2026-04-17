@@ -49,7 +49,7 @@ def train_model(model_id: str, request: TrainRequest) -> dict:
 
     if settings.jobs_backend == "memory":
         metadata_service = MetadataService(settings.metadata_dir)
-        runtime = ModelRuntimeService(metadata_service, settings.models_dir, settings.cache_dir)
+        runtime = ModelRuntimeService(metadata_service, settings.models_dir)
         try:
             result = runtime.train(model_id=model_id, request=request)
             return {"job_id": "sync", "status": "succeeded", "result": result}
@@ -73,7 +73,7 @@ def forecast_model(model_id: str, request: ForecastRequest) -> dict:
 
     if settings.jobs_backend == "memory":
         metadata_service = MetadataService(settings.metadata_dir)
-        runtime = ModelRuntimeService(metadata_service, settings.models_dir, settings.cache_dir)
+        runtime = ModelRuntimeService(metadata_service, settings.models_dir)
         try:
             result = runtime.forecast(model_id=model_id, request=request)
             return {"job_id": "sync", "status": "succeeded", "result": result}

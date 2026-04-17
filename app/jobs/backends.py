@@ -53,7 +53,7 @@ class RedisRQBackend(JobBackend):
 
     def __init__(self, redis_url: str, handler_map: dict[str, str]) -> None:
         self.redis = Redis.from_url(redis_url)
-        self.queue = Queue("tsaas", connection=self.redis)
+        self.queue = Queue("tsfaas", connection=self.redis)
         self.handler_map = handler_map
 
     def enqueue(self, task_name: str, payload: dict[str, Any]) -> str:

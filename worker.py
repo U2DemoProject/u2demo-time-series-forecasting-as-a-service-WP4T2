@@ -5,11 +5,11 @@ from app.core.config import get_settings
 
 
 def main() -> None:
-    """Start an RQ worker bound to the tsaas queue."""
+    """Start an RQ worker bound to the tsfaas queue."""
     settings = get_settings()
     redis = Redis.from_url(settings.redis_url)
     with Connection(redis):
-        worker = Worker([Queue("tsaas")])
+        worker = Worker([Queue("tsfaas")])
         worker.work(with_scheduler=False)
 
 

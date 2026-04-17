@@ -1,13 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from app.schemas.common import DataSourceConfig
 
-
-class DataSource(ABC):
+class DataSource[TConfig](ABC):
     """Abstract data source contract for training/forecast payload retrieval."""
 
     @abstractmethod
-    def fetch(self, config: DataSourceConfig) -> dict[str, Any]:
+    def fetch(self, config: TConfig) -> dict[str, Any]:
         """Return normalized source payload from provided source configuration."""
         raise NotImplementedError

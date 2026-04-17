@@ -1,20 +1,24 @@
 [project]
-name = "u2demo-deployments"
+name = "u2demo-tsfaas"
 version = "0.1.0"
-description = "Time Series Tool as a Service - Skeleton"
+description = "U2Demo Time Series Forecasting as a Service"
 authors = [
-    { name = "U2 Demo Team" }
+    {name = "Maxime Gatineau", email = "maxime.gatineau@eifer.org"},
+    {name = "Hubert Kriebitzsch", email = "hubert.kriebitzsch@eifer.org"},
+    {name = "Jaisiel Santana", email = "jaisiel.santana@eifer.org"}
 ]
 readme = "README.md"
+license = {text = "Apache-2.0"}
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi (==0.115.12)",
     "uvicorn[standard] (==0.34.0)",
-    "pydantic (==2.11.2)",
-    "pydantic-settings (==2.8.1)",
+    "pydantic (>=2.12.5,<3.0.0)",
+    "pydantic-settings (>=2.8.1,<3.0.0)",
     "requests (==2.32.3)",
     "redis (==5.2.1)",
     "rq (==1.16.2)",
+    "u2demo-time-series-forecasting @ git+https://github.com/U2DemoProject/u2demo-time-series-forecasting-WP4T2.git",
 ]
 
 [build-system]
@@ -25,6 +29,9 @@ build-backend = "poetry.core.masonry.api"
 dev = [
     "ruff (>=0.14.8,<0.15.0)",
     "pyright (>=1.1.405,<2.0.0)",
+    "pytest (>=8.0.0,<9.0.0)",
+    "pytest-mock (>=3.14.0,<4.0.0)",
+    "httpx (>=0.28.0,<1.0.0)",
 ]
 
 [tool.poetry]
