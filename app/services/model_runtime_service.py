@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from u2.predict import predict as u2_predict
-from u2.train import train as u2_train
+from u2demo_time_series_forecasting.predict import predict as u2_predict
+from u2demo_time_series_forecasting.train import train as u2_train
 
 from app.core.errors import SourceValidationError
 from app.factories.data_source_factory import DataSourceFactory

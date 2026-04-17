@@ -18,7 +18,7 @@ dependencies = [
     "requests (==2.32.3)",
     "redis (==5.2.1)",
     "rq (==1.16.2)",
-    "u2 @ git+https://git.eifer.kit.edu/dev-team/u2-demo/u2-time-series-prediction-final.git",
+    "u2demo-time-series-forecasting @ git+https://github.com/U2DemoProject/u2demo-time-series-forecasting-WP4T2.git",
 ]
 
 [build-system]

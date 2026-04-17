@@ -1,6 +1,6 @@
-# Re-export the canonical schemas from the u2 core library.
+# Re-export the canonical schemas from the u2demo-time-series-forecasting core library.
 # The temporary local definitions that lived here have been replaced.
-from u2.data_models import (
+from u2demo_time_series_forecasting.data_models import (
     BaseExogenousSeries,
     BaseSeries,
     Forecast,

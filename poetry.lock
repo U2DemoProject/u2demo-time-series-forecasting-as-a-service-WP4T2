@@ -8161,9 +8161,9 @@ files = [
 ]
 
 [[package]]
-name = "u2"
+name = "u2demo-time-series-forecasting"
 version = "0.1.0"
-description = "Time Series Prediction Algorithm Implementation for U2 Demo Project"
+description = "Time Series Forecasting Algorithm Implementation for U2Demo Project"
 optional = false
 python-versions = ">=3.12,<3.13"
 groups = ["main"]
@@ -8179,15 +8179,16 @@ lightning = "2.5.1"
 numpy = ">=1.25.0,<2.3.0"
 pandas = ">=2.3.3,<3.0.0"
 pydantic = ">=2.12.5,<3.0.0"
+pydantic-settings = ">=2.0,<3.0"
 python-dotenv = ">=1.2.1,<2.0.0"
 tenacity = ">=9.1.2,<10.0.0"
-torch = ">=2.2,<2.8"
+torch = ">=2.2,<3.0"
 
 [package.source]
 type = "git"
-url = "https://git.eifer.kit.edu/dev-team/u2-demo/u2-time-series-prediction-final.git"
+url = "https://github.com/U2DemoProject/u2demo-time-series-forecasting-WP4T2.git"
 reference = "HEAD"
-resolved_reference = "b240cd51676e0a91f79a5b4ae3997845a3d60cb7"
+resolved_reference = "90deed03349a48415159ccdfca5f804c80109486"
 
 [[package]]
 name = "urllib3"
@@ -9069,4 +9070,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "b5ea4a55a42d56eaae737c933871079da87d709491930d955d10204ebebadd0f"
+content-hash = "bb2d461c324d0f489e11ccc0167abe50c424f040976a75a74f2d93cfee51d566"

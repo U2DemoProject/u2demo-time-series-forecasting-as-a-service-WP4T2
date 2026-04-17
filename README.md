@@ -9,7 +9,7 @@ held responsible for them. U2Demo has received funding from the European Union's
 agreement no. 101160684.
 
 This repository provides a reference implementation of an HTTP service built on top of the
-[U2 Time Series Prediction](https://git.eifer.kit.edu/dev-team/u2-demo/u2-time-series-prediction-final) core library.
+[U2Demo Time Series Forecasting](https://github.com/U2DemoProject/u2demo-time-series-forecasting-WP4T2) core library.
 It demonstrates how to wrap the forecasting engine behind a REST API with asynchronous job processing, making it easy
 to integrate time-series training and inference into larger systems.
 
@@ -19,7 +19,7 @@ The service is built with **FastAPI**, uses **Redis + RQ** for async job executi
 ## Architecture
 
 This repo is the API and orchestration layer; the forecasting brain is the
-[`u2`](https://git.eifer.kit.edu/dev-team/u2-demo/u2-time-series-prediction-final) library, pulled in as a dependency.
+[`u2demo-time-series-forecasting`](https://github.com/U2DemoProject/u2demo-time-series-forecasting-WP4T2) library, pulled in as a dependency.
 Three processes cooperate at runtime:
 
 - **`app/main.py`** — FastAPI application exposing the REST endpoints and enqueuing jobs.

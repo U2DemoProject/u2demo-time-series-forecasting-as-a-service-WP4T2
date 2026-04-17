@@ -13,9 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt ./
 ARG GIT_TOKEN
-RUN git config --global url."https://oauth2:${GIT_TOKEN}@git.eifer.kit.edu/".insteadOf "https://git.eifer.kit.edu/" \
-    && pip install --no-cache-dir -r requirements.txt \
-    && git config --global --remove-section url."https://oauth2:${GIT_TOKEN}@git.eifer.kit.edu/"
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY worker.py ./worker.py
