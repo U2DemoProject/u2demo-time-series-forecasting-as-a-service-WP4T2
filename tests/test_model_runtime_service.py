@@ -1,10 +1,11 @@
-"""Unit tests for ModelRuntimeService — u2 calls are mocked."""
+"""Unit tests for ModelRuntimeService — u2 calls and repository are mocked."""
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from app.core.errors import ModelNotFoundError, SourceValidationError
 from app.schemas.common import InlineDataSourceConfig
@@ -37,11 +38,12 @@ def metadata_svc(tmp_path: Path) -> MetadataService:
 def runtime(tmp_path: Path, metadata_svc: MetadataService) -> ModelRuntimeService:
     models_dir = tmp_path / "models"
     models_dir.mkdir()
-    return ModelRuntimeService(metadata_svc, models_dir)
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    return ModelRuntimeService(metadata_svc, models_dir, cache_dir=cache_dir)
 
 
 def _make_forecast_result(_model_id: str, _version: str) -> Forecast:
-    """Return a minimal Forecast object for mocking u2_predict."""
     _start = datetime(2024, 1, 2, tzinfo=UTC)
     return Forecast(
         forecast_type="deterministic",
@@ -70,17 +72,27 @@ def test_train_calls_u2_train_and_records_version(
     runtime: ModelRuntimeService,
     metadata_svc: MetadataService,
     minimal_training_input: ForecastTrainingInput,
+    mocker: MockerFixture,
+    tmp_path: Path,
 ) -> None:
     metadata_svc.create(CreateModelRequest(model_id="test-model"))
     request = TrainRequest(forecast_training_input=minimal_training_input)
 
-    with patch("app.services.model_runtime_service.u2_train") as mock_train:
-        result = runtime.train("test-model", request)
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    mock_repo = MagicMock()
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=mock_repo)
+    mock_train = mocker.patch("app.services.model_runtime_service.u2_train")
+
+    result = runtime.train("test-model", request)
 
     mock_train.assert_called_once()
     called_input: ForecastTrainingInput = mock_train.call_args[0][0]
     assert called_input.training_model_config.model_id == "test-model"
     assert called_input.training_model_config.model_version == "v1"
+
+    mock_repo.save_model.assert_called_once_with("test-model", "v1", u2_dir)
 
     assert result["model_id"] == "test-model"
     assert result["version"] == "v1"
@@ -91,9 +103,10 @@ def test_train_autogenerates_version_when_missing(
     runtime: ModelRuntimeService,
     metadata_svc: MetadataService,
     minimal_training_input: ForecastTrainingInput,
+    mocker: MockerFixture,
+    tmp_path: Path,
 ) -> None:
     metadata_svc.create(CreateModelRequest(model_id="test-model"))
-    # Strip the preset version so one gets auto-generated.
     no_version_input = minimal_training_input.model_copy(
         update={
             "training_model_config": minimal_training_input.training_model_config.model_copy(
@@ -103,10 +116,15 @@ def test_train_autogenerates_version_when_missing(
     )
     request = TrainRequest(forecast_training_input=no_version_input)
 
-    with patch("app.services.model_runtime_service.u2_train"):
-        result = runtime.train("test-model", request)
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=MagicMock())
+    mocker.patch("app.services.model_runtime_service.u2_train")
 
-    assert result["version"]  # some non-empty string was generated
+    result = runtime.train("test-model", request)
+
+    assert result["version"]
     assert result["version"] in metadata_svc.get("test-model").versions
 
 
@@ -115,7 +133,7 @@ def test_train_raises_when_no_source_provided(
     metadata_svc: MetadataService,
 ) -> None:
     metadata_svc.create(CreateModelRequest(model_id="test-model"))
-    request = TrainRequest()  # neither data_source nor forecast_training_input
+    request = TrainRequest()
     with pytest.raises(ValueError, match="must provide"):
         runtime.train("test-model", request)
 
@@ -124,14 +142,20 @@ def test_train_parses_inline_data_source(
     runtime: ModelRuntimeService,
     metadata_svc: MetadataService,
     minimal_training_input: ForecastTrainingInput,
+    mocker: MockerFixture,
+    tmp_path: Path,
 ) -> None:
     metadata_svc.create(CreateModelRequest(model_id="test-model"))
     payload = minimal_training_input.model_dump(mode="json", by_alias=True)
     request = TrainRequest(data_source=InlineDataSourceConfig(type="inline", payload=payload))
 
-    with patch("app.services.model_runtime_service.u2_train"):
-        result = runtime.train("test-model", request)
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=MagicMock())
+    mocker.patch("app.services.model_runtime_service.u2_train")
 
+    result = runtime.train("test-model", request)
     assert result["model_id"] == "test-model"
 
 
@@ -147,6 +171,32 @@ def test_train_raises_source_validation_error_on_bad_payload(
         runtime.train("test-model", request)
 
 
+def test_train_cleans_up_artifact_dir_after_save(
+    runtime: ModelRuntimeService,
+    metadata_svc: MetadataService,
+    minimal_training_input: ForecastTrainingInput,
+    mocker: MockerFixture,
+    tmp_path: Path,
+) -> None:
+    metadata_svc.create(CreateModelRequest(model_id="test-model"))
+    request = TrainRequest(forecast_training_input=minimal_training_input)
+
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    artifact = u2_dir / "test-model_v1"
+
+    def _fake_train(_training_input: ForecastTrainingInput) -> None:
+        artifact.mkdir()
+        (artifact / "model.pkl").write_bytes(b"fake")
+
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=MagicMock())
+    mocker.patch("app.services.model_runtime_service.u2_train", side_effect=_fake_train)
+
+    runtime.train("test-model", request)
+    assert not artifact.exists()
+
+
 # ---------------------------------------------------------------------------
 # forecast()
 # ---------------------------------------------------------------------------
@@ -156,6 +206,8 @@ def test_forecast_calls_u2_predict_and_returns_result(
     runtime: ModelRuntimeService,
     metadata_svc: MetadataService,
     minimal_forecast_input: ForecastInput,
+    mocker: MockerFixture,
+    tmp_path: Path,
 ) -> None:
     metadata_svc.create(CreateModelRequest(model_id="test-model"))
     metadata_svc.add_version("test-model", "v1")
@@ -163,10 +215,13 @@ def test_forecast_calls_u2_predict_and_returns_result(
     request = ForecastRequest(version="v1", forecast_input=minimal_forecast_input)
     mock_result = _make_forecast_result("test-model", "v1")
 
-    with patch(
-        "app.services.model_runtime_service.u2_predict", return_value=mock_result
-    ) as mock_predict:
-        result = runtime.forecast("test-model", request)
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=MagicMock())
+    mock_predict = mocker.patch("app.services.model_runtime_service.u2_predict", return_value=mock_result)
+
+    result = runtime.forecast("test-model", request)
 
     mock_predict.assert_called_once()
     called_input: ForecastInput = mock_predict.call_args[0][0]
@@ -175,10 +230,37 @@ def test_forecast_calls_u2_predict_and_returns_result(
     assert result["forecast_type"] == "deterministic"
 
 
+def test_forecast_loads_artifact_before_predict(
+    runtime: ModelRuntimeService,
+    metadata_svc: MetadataService,
+    minimal_forecast_input: ForecastInput,
+    mocker: MockerFixture,
+    tmp_path: Path,
+) -> None:
+    metadata_svc.create(CreateModelRequest(model_id="test-model"))
+    metadata_svc.add_version("test-model", "v1")
+
+    request = ForecastRequest(version="v1", forecast_input=minimal_forecast_input)
+    mock_result = _make_forecast_result("test-model", "v1")
+
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    mock_repo = MagicMock()
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=mock_repo)
+    mocker.patch("app.services.model_runtime_service.u2_predict", return_value=mock_result)
+
+    runtime.forecast("test-model", request)
+
+    mock_repo.load_model.assert_called_once_with("test-model", "v1", u2_dir)
+
+
 def test_forecast_resolves_latest_version(
     runtime: ModelRuntimeService,
     metadata_svc: MetadataService,
     minimal_forecast_input: ForecastInput,
+    mocker: MockerFixture,
+    tmp_path: Path,
 ) -> None:
     metadata_svc.create(CreateModelRequest(model_id="test-model"))
     metadata_svc.add_version("test-model", "v1")
@@ -187,10 +269,13 @@ def test_forecast_resolves_latest_version(
     request = ForecastRequest(version="latest", forecast_input=minimal_forecast_input)
     mock_result = _make_forecast_result("test-model", "v2")
 
-    with patch(
-        "app.services.model_runtime_service.u2_predict", return_value=mock_result
-    ) as mock_predict:
-        runtime.forecast("test-model", request)
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=MagicMock())
+    mock_predict = mocker.patch("app.services.model_runtime_service.u2_predict", return_value=mock_result)
+
+    runtime.forecast("test-model", request)
 
     called_input: ForecastInput = mock_predict.call_args[0][0]
     assert called_input.model_version == "v2"
@@ -214,3 +299,35 @@ def test_forecast_raises_for_unknown_model(
     request = ForecastRequest(version="latest", forecast_input=minimal_forecast_input)
     with pytest.raises(ModelNotFoundError):
         runtime.forecast("ghost", request)
+
+
+def test_forecast_cleans_up_artifact_dir_after_predict(
+    runtime: ModelRuntimeService,
+    metadata_svc: MetadataService,
+    minimal_forecast_input: ForecastInput,
+    mocker: MockerFixture,
+    tmp_path: Path,
+) -> None:
+    metadata_svc.create(CreateModelRequest(model_id="test-model"))
+    metadata_svc.add_version("test-model", "v1")
+
+    request = ForecastRequest(version="v1", forecast_input=minimal_forecast_input)
+    mock_result = _make_forecast_result("test-model", "v1")
+
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    artifact = u2_dir / "test-model_v1"
+
+    def _fake_load(_model_id: str, _version: str, _target_dir: Path) -> Path:
+        artifact.mkdir()
+        (artifact / "model.pkl").write_bytes(b"fake")
+        return artifact
+
+    mock_repo = MagicMock()
+    mock_repo.load_model.side_effect = _fake_load
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=mock_repo)
+    mocker.patch("app.services.model_runtime_service.u2_predict", return_value=mock_result)
+
+    runtime.forecast("test-model", request)
+    assert not artifact.exists()

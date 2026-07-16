@@ -29,6 +29,8 @@ Three processes cooperate at runtime:
 ## Documentation
 
 - [Workflow Explanation](doc/workflow-explanation.md) — architecture overview and request lifecycle.
+- [Data & Model Sources](doc/sources.md) — the pluggable `data_source` / `model_source` "categories", their `type` values, JSON examples, and precedence rules.
+- [Extending the Service](doc/extending.md) — how to add a new data-source or model-repository type.
 - [Household Forecast Example (Jupyter Notebook)](doc/example_household_forecast.ipynb) — end-to-end walkthrough: generate synthetic data, train a model, and produce a 24h forecast via the API.
 
 ## Prerequisites
@@ -99,6 +101,24 @@ Interactive, schema-accurate docs are available at [`/docs`](http://localhost:80
 - `POST /api/v1/models/{model_id}/forecast` — submit a forecast job
 - `GET  /api/v1/jobs/{job_id}` — poll job status / retrieve results
 
+### Choosing where data and models come from
+
+Training and forecast requests select a data source and (optionally) a model store via `data_source` and
+`model_source` fields. These are the pluggable "categories" — inline vs URL data, local volume vs remote
+model store. See [Data & Model Sources](doc/sources.md) for the full menu, JSON examples, and the
+precedence between `data_source` and typed inputs.
+
+### Sync vs async: how you read results
+
+The response shape depends on `JOBS_BACKEND`:
+
+- **`redis` (default, async):** `/train` and `/forecast` return `202` with a `job_id`. Poll
+  `GET /api/v1/jobs/{job_id}` until `status` is `succeeded` or `failed`; the payload is under `detail.result`.
+- **`memory` (synchronous):** the job runs in-process and the `/train`/`/forecast` response already contains
+  `status: "succeeded"` and an inline `result` — there is no `job_id` to poll.
+
+Job `status` is normalized to `queued` / `running` / `succeeded` / `failed` regardless of backend.
+
 ## Configuration
 
 All settings are read from environment variables (or a `.env` file). Defaults are suitable for local development.
@@ -114,8 +134,8 @@ All settings are read from environment variables (or a `.env` file). Defaults ar
 | `MODELS_DIR`          | `storage/models`               | Where trained model artifacts are persisted.                                |
 | `METADATA_DIR`        | `storage/metadata`             | Where model metadata is persisted.                                          |
 | `CACHE_DIR`           | `storage/cache`                | Working cache directory.                                                    |
-| `ALLOWED_DATA_HOSTS`  | `*`                            | Comma-separated allow-list for external data source hosts (`*` = any).      |
-| `ALLOWED_MODEL_HOSTS` | `*`                            | Comma-separated allow-list for external model source hosts (`*` = any).    |
+| `ALLOWED_DATA_HOSTS`  | `*`                            | Reserved: comma-separated allow-list for external data source hosts. **Not yet enforced.** |
+| `ALLOWED_MODEL_HOSTS` | `*`                            | Reserved: comma-separated allow-list for external model source hosts. **Not yet enforced.** |
 
 ## Testing
 

@@ -5,4 +5,5 @@ pydantic-settings>=2.8.1
 requests==2.32.3
 redis==5.2.1
 rq==1.16.2
+paramiko>=3.5,<4.0
 u2demo-time-series-forecasting @ git+https://github.com/U2DemoProject/u2demo-time-series-forecasting-WP4T2.git

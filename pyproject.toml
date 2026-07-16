@@ -19,6 +19,7 @@ dependencies = [
     "redis (==5.2.1)",
     "rq (==1.16.2)",
     "u2demo-time-series-forecasting @ git+https://github.com/U2DemoProject/u2demo-time-series-forecasting-WP4T2.git",
+    "paramiko (>=3.5,<4.0)",
 ]
 
 [build-system]

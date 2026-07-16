@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.common import DataSourceConfig
+from app.schemas.common import DataSourceConfig, ModelSourceConfig
 from app.schemas.forecast_models import ForecastInput, ForecastTrainingInput
 
 
@@ -20,6 +20,10 @@ class TrainRequest(BaseModel):
     forecast_training_input: ForecastTrainingInput | None = Field(
         default=None,
         description="Typed training input (takes precedence over data_source payload).",
+    )
+    model_source: ModelSourceConfig | None = Field(
+        default=None,
+        description="Where to persist the trained model artifact. Defaults to local volume.",
     )
 
 
@@ -44,4 +48,8 @@ class ForecastRequest(BaseModel):
     forecast_input: ForecastInput | None = Field(
         default=None,
         description="Typed forecast input (takes precedence over data_source payload).",
+    )
+    model_source: ModelSourceConfig | None = Field(
+        default=None,
+        description="Where to load the model artifact from. Defaults to local volume.",
     )

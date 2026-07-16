@@ -91,7 +91,6 @@ def client(storage: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> TestCli
     monkeypatch.setenv("MODELS_DIR", str(storage["models"]))
     monkeypatch.setenv("METADATA_DIR", str(storage["metadata"]))
     monkeypatch.setenv("CACHE_DIR", str(storage["cache"]))
-    monkeypatch.setenv("MODEL_PATH", str(storage["models"]))
 
     # Clear the lru_cache so the patched env vars take effect.
     from app.core.config import get_settings
