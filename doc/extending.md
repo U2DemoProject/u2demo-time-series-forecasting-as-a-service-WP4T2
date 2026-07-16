@@ -5,35 +5,57 @@ factories keyed on a discriminated `type` field. Adding a new category is a thre
 
 ## Add a new data-source type
 
-Say you want an `s3` data source.
+Say you want a `db` data source that reads the input series straight from a SQL database.
 
 1. **Define the config schema** in [`app/schemas/common.py`](../app/schemas/common.py) with a literal `type`
-   discriminator, then add it to the `DataSourceConfig` union:
+   discriminator, then add it to the `DataSourceConfig` union. Keep the DSN out of the request body by
+   accepting an `EnvRef` (see [sources.md](sources.md#authentication-and-secrets)):
 
    ```python
-   class S3DataSourceConfig(BaseModel):
-       type: Literal["s3"]
-       bucket: str
-       key: str
+   class DbDataSourceConfig(BaseModel):
+       type: Literal["db"]
+       dsn: str | EnvRef          # e.g. {"env": "FORECAST_DB_DSN"}
+       query: str                 # returns rows shaped like the target series
 
-   DataSourceConfig = InlineDataSourceConfig | UrlDataSourceConfig | S3DataSourceConfig
+   DataSourceConfig = InlineDataSourceConfig | UrlDataSourceConfig | DbDataSourceConfig
    ```
 
-2. **Implement the source** in `app/sources/` by subclassing `DataSource` and returning a normalized dict:
+2. **Implement the source** in `app/sources/` by subclassing `DataSource`, running the query, and shaping the
+   rows into the payload the runtime expects (a `ForecastTrainingInput` / `ForecastInput` dict):
 
    ```python
-   # app/sources/s3_source.py
-   class S3DataSource(DataSource[S3DataSourceConfig]):
-       def fetch(self, config: S3DataSourceConfig) -> dict[str, Any]:
-           ...  # download and return a ForecastTrainingInput / ForecastInput dict
+   # app/sources/db_source.py
+   class DbDataSource(DataSource[DbDataSourceConfig]):
+       def fetch(self, config: DbDataSourceConfig) -> dict[str, Any]:
+           dsn = _resolve_secret(config.dsn)          # reuse the EnvRef helper
+           with connect(dsn) as conn:                 # your DB driver of choice
+               rows = conn.execute(config.query).fetchall()
+           return {                                   # -> ForecastInput-shaped dict
+               "forecast_type": "deterministic",
+               "time_parameters": {"timestep_minutes": 60, "horizon_hours": 24},
+               "target_series": {
+                   "series_id": "series-1",
+                   "variable_name": "value",
+                   "historical_values": [
+                       {"time": row.time.isoformat(), "value": float(row.value)}
+                       for row in rows
+                   ],
+               },
+           }
    ```
 
 3. **Register it** in [`app/factories/data_source_factory.py`](../app/factories/data_source_factory.py):
 
    ```python
-   if config.type == "s3":
-       return S3DataSource()
+   if config.type == "db":
+       return DbDataSource()
    ```
+
+A request then selects it like any other category:
+
+```json
+{ "data_source": { "type": "db", "dsn": { "env": "FORECAST_DB_DSN" }, "query": "SELECT time, value FROM readings WHERE asset_id = 'house-1' ORDER BY time" } }
+```
 
 ## Add a new model-repository type
 
