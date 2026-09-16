@@ -6,6 +6,20 @@ from uuid import uuid4
 from redis import Redis
 from rq import Queue
 
+# Map RQ's native job states onto the normalized JobStatus vocabulary
+# (see app.schemas.common.JobStatus) so clients see the same values across
+# backends. Unknown/transient states fall back to "queued".
+_RQ_STATUS_MAP = {
+    "queued": "queued",
+    "deferred": "queued",
+    "scheduled": "queued",
+    "started": "running",
+    "finished": "succeeded",
+    "failed": "failed",
+    "stopped": "failed",
+    "canceled": "failed",
+}
+
 
 class JobBackend(ABC):
     """Abstract interface for queuing jobs and reading their status."""
@@ -35,6 +49,7 @@ class InMemoryJobBackend(JobBackend):
             "job_id": job_id,
             "status": "queued",
             "task": task_name,
+            "model_id": payload.get("model_id"),
             "payload": payload,
             "created_at": now,
             "updated_at": now,
@@ -69,9 +84,12 @@ class RedisRQBackend(JobBackend):
         if job is None:
             raise KeyError(job_id)
 
-        status = job.get_status() or "unknown"
+        status = _RQ_STATUS_MAP.get(job.get_status() or "", "queued")
         created_at = job.created_at.isoformat() if job.created_at else None
         updated_at = job.ended_at.isoformat() if job.ended_at else created_at
+
+        # The enqueued payload is the first positional arg; recover model_id from it.
+        model_id = job.args[0].get("model_id") if job.args and isinstance(job.args[0], dict) else None
 
         detail: dict[str, Any] = {}
         if job.result is not None:
@@ -83,6 +101,7 @@ class RedisRQBackend(JobBackend):
             "job_id": job_id,
             "status": status,
             "task": str(job.func_name),
+            "model_id": model_id,
             "created_at": created_at,
             "updated_at": updated_at,
             "detail": detail,

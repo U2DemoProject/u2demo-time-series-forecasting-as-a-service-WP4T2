@@ -7,7 +7,7 @@ from app.services.model_runtime_service import ModelRuntimeService
 def _runtime() -> ModelRuntimeService:
     settings = get_settings()
     metadata_service = MetadataService(settings.metadata_dir)
-    return ModelRuntimeService(metadata_service, settings.models_dir)
+    return ModelRuntimeService(metadata_service, settings.models_dir, cache_dir=settings.cache_dir)
 
 
 def train_task(payload: dict) -> dict:

@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from u2demo_time_series_forecasting.constants.paths import MODEL_DIR as U2_MODEL_DIR
 
 from app.schemas.forecast_models import (
     Forecast,
@@ -15,6 +16,18 @@ from app.schemas.forecast_models import (
     TimeParameters,
     TimeValue,
 )
+
+
+def _fake_u2_train(training_input: ForecastTrainingInput) -> None:
+    """Stand in for u2_train by writing the artifact the real trainer would produce.
+
+    ModelRuntimeService tars ``U2_MODEL_DIR/{model_id}_{version}/`` after training,
+    so the mock must materialize that directory or save_model has nothing to archive.
+    """
+    config = training_input.training_model_config
+    artifact = U2_MODEL_DIR / f"{config.model_id}_{config.model_version}"
+    artifact.mkdir(parents=True, exist_ok=True)
+    (artifact / "model.bin").write_bytes(b"fake-artifact")
 
 # ---------------------------------------------------------------------------
 # Health / readiness
@@ -86,7 +99,7 @@ def test_train_model_sync(
         )
     }
 
-    with patch("app.services.model_runtime_service.u2_train"):
+    with patch("app.services.model_runtime_service.u2_train", side_effect=_fake_u2_train):
         resp = client.post("/api/v1/models/test-model/train", json=payload)
 
     assert resp.status_code == 202
@@ -97,7 +110,7 @@ def test_train_model_sync(
 
 def test_train_model_missing_model_returns_422(client: TestClient) -> None:
     # model_id not registered — MetadataService.add_version will raise ModelNotFoundError
-    with patch("app.services.model_runtime_service.u2_train"):
+    with patch("app.services.model_runtime_service.u2_train", side_effect=_fake_u2_train):
         resp = client.post(
             "/api/v1/models/unknown/train",
             json={
@@ -152,7 +165,7 @@ def test_forecast_model_sync(
     client.post("/api/v1/models", json={"model_id": "test-model"})
 
     # First train so a version exists.
-    with patch("app.services.model_runtime_service.u2_train"):
+    with patch("app.services.model_runtime_service.u2_train", side_effect=_fake_u2_train):
         client.post(
             "/api/v1/models/test-model/train",
             json={
