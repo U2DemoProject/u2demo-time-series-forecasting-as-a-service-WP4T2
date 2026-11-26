@@ -222,3 +222,33 @@ def test_forecast_no_versions_returns_422(client: TestClient) -> None:
         json={"forecast_input": forecast_input.model_dump(mode="json")},
     )
     assert resp.status_code == 422
+
+
+def test_train_and_forecast_v2_sync(
+    client: TestClient,
+    minimal_training_payload_v2: dict,
+    minimal_forecast_payload_v2: dict,
+) -> None:
+    client.post("/api/v1/models", json={"model_id": "test-model"})
+
+    with patch("app.services.model_runtime_service.u2_train", side_effect=_fake_u2_train):
+        train_resp = client.post(
+            "/api/v1/models/test-model/train", json={"forecast_training_input": minimal_training_payload_v2}
+        )
+    assert train_resp.status_code == 202
+    assert train_resp.json()["result"] == {"model_id": "test-model", "version": "v1"}
+
+    with patch("app.services.model_runtime_service.u2_predict", return_value=_MOCK_FORECAST):
+        resp = client.post("/api/v1/models/test-model/forecast", json={"forecast_input": minimal_forecast_payload_v2})
+
+    assert resp.status_code == 202
+    result = resp.json()["result"]
+    assert result["forecastId"] == "forecast-1"
+    assert result["hasForecastSeries"][0]["model_id"] == "test-model_v1"
+    assert len(result["hasForecastSeries"][0]["hasValues"]) == 24
+
+
+def test_forecast_mixed_v1_v2_payload_returns_422(client: TestClient, minimal_forecast_payload_v2: dict) -> None:
+    payload = {**minimal_forecast_payload_v2, "forecast_type": "deterministic"}
+    resp = client.post("/api/v1/models/test-model/forecast", json={"forecast_input": payload})
+    assert resp.status_code == 422

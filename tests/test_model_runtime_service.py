@@ -13,8 +13,11 @@ from app.schemas.forecast_models import (
     Forecast,
     ForecastedTimeValue,
     ForecastInput,
+    ForecastInputV2,
     ForecastSeries,
     ForecastTrainingInput,
+    ForecastTrainingInputV2,
+    ForecastV2,
     TimeParameters,
 )
 from app.schemas.models import CreateModelRequest
@@ -331,3 +334,112 @@ def test_forecast_cleans_up_artifact_dir_after_predict(
 
     runtime.forecast("test-model", request)
     assert not artifact.exists()
+
+
+# ---------------------------------------------------------------------------
+# U2Demo data models v2
+# ---------------------------------------------------------------------------
+
+
+def test_train_v2_trains_v1_equivalent(
+    runtime: ModelRuntimeService,
+    metadata_svc: MetadataService,
+    minimal_training_payload_v2: dict,
+    mocker: MockerFixture,
+    tmp_path: Path,
+) -> None:
+    metadata_svc.create(CreateModelRequest(model_id="test-model"))
+    request = TrainRequest.model_validate({"forecast_training_input": minimal_training_payload_v2})
+    assert isinstance(request.forecast_training_input, ForecastTrainingInputV2)
+
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=MagicMock())
+    mock_train = mocker.patch("app.services.model_runtime_service.u2_train")
+
+    result = runtime.train("test-model", request)
+
+    called_input: ForecastTrainingInput = mock_train.call_args[0][0]
+    assert isinstance(called_input, ForecastTrainingInput)
+    assert called_input.forecast_type == "deterministic"
+    assert called_input.target_series.variable_name == "ActivePower"
+    assert called_input.training_model_config.model_id == "test-model"
+    assert called_input.training_model_config.model_version == "v1"
+    assert result == {"model_id": "test-model", "version": "v1"}
+
+
+def test_train_parses_v2_inline_data_source(
+    runtime: ModelRuntimeService,
+    metadata_svc: MetadataService,
+    minimal_training_payload_v2: dict,
+    mocker: MockerFixture,
+    tmp_path: Path,
+) -> None:
+    metadata_svc.create(CreateModelRequest(model_id="test-model"))
+    request = TrainRequest(data_source=InlineDataSourceConfig(type="inline", payload=minimal_training_payload_v2))
+
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=MagicMock())
+    mock_train = mocker.patch("app.services.model_runtime_service.u2_train")
+
+    runtime.train("test-model", request)
+
+    assert mock_train.call_args[0][0].target_series.asset_id == "load_1"
+
+
+def test_train_rejects_mixed_v1_v2_data_source(
+    runtime: ModelRuntimeService,
+    metadata_svc: MetadataService,
+    minimal_training_payload_v2: dict,
+) -> None:
+    metadata_svc.create(CreateModelRequest(model_id="test-model"))
+    payload = {**minimal_training_payload_v2, "time_parameters": {"timestep_minutes": 60, "horizon_hours": 24}}
+    request = TrainRequest(data_source=InlineDataSourceConfig(type="inline", payload=payload))
+    with pytest.raises(SourceValidationError):
+        runtime.train("test-model", request)
+
+
+def test_v2_request_survives_job_queue_round_trip(minimal_forecast_payload_v2: dict) -> None:
+    request = ForecastRequest.model_validate({"forecast_input": minimal_forecast_payload_v2})
+    queued = ForecastRequest.model_validate(request.model_dump(mode="json"))
+    assert isinstance(queued.forecast_input, ForecastInputV2)
+    assert queued.forecast_input == request.forecast_input
+
+
+def test_forecast_v2_returns_v2_payload(
+    runtime: ModelRuntimeService,
+    metadata_svc: MetadataService,
+    minimal_forecast_payload_v2: dict,
+    mocker: MockerFixture,
+    tmp_path: Path,
+) -> None:
+    metadata_svc.create(CreateModelRequest(model_id="test-model"))
+    metadata_svc.add_version("test-model", "v1")
+    request = ForecastRequest.model_validate({"version": "v1", "forecast_input": minimal_forecast_payload_v2})
+
+    u2_dir = tmp_path / "u2"
+    u2_dir.mkdir()
+    mocker.patch("app.services.model_runtime_service.U2_MODEL_DIR", new=u2_dir)
+    mocker.patch("app.services.model_runtime_service.ModelRepositoryFactory.create", return_value=MagicMock())
+    mock_predict = mocker.patch(
+        "app.services.model_runtime_service.u2_predict", return_value=_make_forecast_result("test-model", "v1")
+    )
+
+    result = runtime.forecast("test-model", request)
+
+    called_input: ForecastInput = mock_predict.call_args[0][0]
+    assert isinstance(called_input, ForecastInput)
+    assert called_input.model_id == "test-model"
+    assert called_input.model_version == "v1"
+    ForecastV2.model_validate(result)
+    assert result["forecastId"] == "forecast-1"
+    assert result["forecast_type"] == "DETERMINISTIC"
+    series = result["hasForecastSeries"][0]
+    assert series["observedProperty"] == "ActivePower"
+    assert series["hasFeatureOfInterest"] == "load_1"
+    assert series["unit"] == "unit:KiloW"
+    assert series["model_id"] == "test-model_v1"
+    assert len(series["hasValues"]) == 24

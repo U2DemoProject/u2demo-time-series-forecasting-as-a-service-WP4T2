@@ -101,6 +101,10 @@ Interactive, schema-accurate docs are available at [`/docs`](http://localhost:80
 - `POST /api/v1/models/{model_id}/forecast` — submit a forecast job
 - `GET  /api/v1/jobs/{job_id}` — poll job status / retrieve results
 
+Training and forecast inputs can use the U2Demo data models v1 or v2: the version is detected from the payload,
+and the forecast is returned in the same version (a v2 forecast is a `ForecastPayloadDM`). See
+[Data model versions](https://github.com/U2DemoProject/u2demo-time-series-forecasting-WP4T2#data-model-versions).
+
 ### Choosing where data and models come from
 
 Training and forecast requests select a data source and (optionally) a model store via `data_source` and

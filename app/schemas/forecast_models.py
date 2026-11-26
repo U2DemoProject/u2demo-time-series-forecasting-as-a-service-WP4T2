@@ -21,6 +21,7 @@ from u2demo_time_series_forecasting.data_models import (
     TrainingSplit,
     TrainingTargetSeries,
 )
+from u2demo_time_series_forecasting.data_models_v2 import ForecastInputV2, ForecastTrainingInputV2, ForecastV2
 
 __all__ = [
     "BaseExogenousSeries",
@@ -29,9 +30,12 @@ __all__ = [
     "ForecastedTimeValue",
     "ForecastExogenousSeries",
     "ForecastInput",
+    "ForecastInputV2",
     "ForecastSeries",
     "ForecastTargetSeries",
     "ForecastTrainingInput",
+    "ForecastTrainingInputV2",
+    "ForecastV2",
     "ForecastType",
     "Location",
     "ModelConfig",

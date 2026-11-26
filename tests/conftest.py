@@ -78,6 +78,43 @@ def minimal_forecast_input() -> ForecastInput:
     )
 
 
+_TV_V2 = [{"timestamp": tv.time.isoformat(), "value": tv.value} for tv in _TV]
+_TARGET_V2 = {
+    "series_id": "s1",
+    "observedProperty": "ActivePower",
+    "hasFeatureOfInterest": "load_1",
+    "unit_symbol": "kW",
+}
+
+
+@pytest.fixture
+def minimal_training_payload_v2() -> dict:
+    """Minimal v2 training payload (U2Demo data models v2)."""
+    return {
+        "hasTimeParameters": {"timestep_minutes": 60, "horizon_hours": 24},
+        "hasUserForecastPreferences": {
+            "forecast_type": "DETERMINISTIC",
+            "model_id": "test-model",
+            "model_preset": "fast_training",
+            "model_version": "v1",
+        },
+        "target_series": {**_TARGET_V2, "training_values": _TV_V2},
+    }
+
+
+@pytest.fixture
+def minimal_forecast_payload_v2() -> dict:
+    """Minimal v2 forecast payload (U2Demo data models v2)."""
+    return {
+        "forecastId": "forecast-1",
+        "forecast_type": "DETERMINISTIC",
+        "hasTimeParameters": {"timestep_minutes": 60, "horizon_hours": 24},
+        "model_id": "test-model",
+        "model_version": "v1",
+        "target_series": {**_TARGET_V2, "historical_values": _TV_V2},
+    }
+
+
 # ---------------------------------------------------------------------------
 # FastAPI test client
 # ---------------------------------------------------------------------------
