@@ -4,14 +4,22 @@ from pathlib import Path
 from typing import Any
 
 from u2demo_time_series_forecasting.constants.paths import MODEL_DIR as U2_MODEL_DIR
+from u2demo_time_series_forecasting.data_models_v2 import forecast_to_v2
 from u2demo_time_series_forecasting.predict import predict as u2_predict
 from u2demo_time_series_forecasting.train import train as u2_train
+from u2demo_time_series_forecasting.versioning import parse_forecast_payload, parse_training_payload
 
 from app.core.errors import SourceValidationError
 from app.factories.data_source_factory import DataSourceFactory
 from app.factories.model_repository_factory import ModelRepositoryFactory
 from app.schemas.common import VolumeModelSourceConfig
-from app.schemas.forecast_models import Forecast, ForecastInput, ForecastTrainingInput
+from app.schemas.forecast_models import (
+    Forecast,
+    ForecastInput,
+    ForecastInputV2,
+    ForecastTrainingInput,
+    ForecastTrainingInputV2,
+)
 from app.schemas.tasks import ForecastRequest, TrainRequest
 from app.services.metadata_service import MetadataService
 
@@ -36,7 +44,7 @@ class ModelRuntimeService:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _resolve_training_input(self, request: TrainRequest) -> ForecastTrainingInput:
+    def _resolve_training_input(self, request: TrainRequest) -> ForecastTrainingInput | ForecastTrainingInputV2:
         if request.forecast_training_input is not None:
             return request.forecast_training_input
 
@@ -44,17 +52,17 @@ class ModelRuntimeService:
             source = DataSourceFactory.create(request.data_source)
             payload = source.fetch(request.data_source)
             try:
-                return ForecastTrainingInput.model_validate(payload)
+                return parse_training_payload(payload)
             except Exception as exc:
                 raise SourceValidationError(
-                    f"data_source payload is not a valid ForecastTrainingInput: {exc}"
+                    f"data_source payload is not a valid v1 or v2 training input: {exc}"
                 ) from exc
 
         raise ValueError(
             "TrainRequest must provide either 'forecast_training_input' or 'data_source'."
         )
 
-    def _resolve_forecast_input(self, request: ForecastRequest) -> ForecastInput:
+    def _resolve_forecast_input(self, request: ForecastRequest) -> ForecastInput | ForecastInputV2:
         if request.forecast_input is not None:
             return request.forecast_input
 
@@ -62,10 +70,10 @@ class ModelRuntimeService:
             source = DataSourceFactory.create(request.data_source)
             payload = source.fetch(request.data_source)
             try:
-                return ForecastInput.model_validate(payload)
+                return parse_forecast_payload(payload)
             except Exception as exc:
                 raise SourceValidationError(
-                    f"data_source payload is not a valid ForecastInput: {exc}"
+                    f"data_source payload is not a valid v1 or v2 forecast input: {exc}"
                 ) from exc
 
         raise ValueError(
@@ -79,6 +87,9 @@ class ModelRuntimeService:
     def train(self, model_id: str, request: TrainRequest) -> dict[str, Any]:
         """Train a model and persist the artifact via the repository."""
         training_input = self._resolve_training_input(request)
+        # v2 requests are trained through their v1 equivalent, as the library's train_v2 does
+        if isinstance(training_input, ForecastTrainingInputV2):
+            training_input = training_input.to_v1()
 
         version: str | None = training_input.training_model_config.model_version
         if not version:
@@ -130,9 +141,13 @@ class ModelRuntimeService:
         try:
             U2_MODEL_DIR.mkdir(parents=True, exist_ok=True)
             repository.load_model(model_id, version, U2_MODEL_DIR)
-            result: Forecast = u2_predict(forecast_input)
+            # v2 requests are forecast through their v1 equivalent, as the library's predict_v2 does
+            is_v2 = isinstance(forecast_input, ForecastInputV2)
+            result: Forecast = u2_predict(forecast_input.to_v1() if is_v2 else forecast_input)
         finally:
             if artifact_path.exists():
                 shutil.rmtree(artifact_path)
 
+        if isinstance(forecast_input, ForecastInputV2):
+            return forecast_to_v2(result, forecast_input).model_dump(mode="json")
         return result.model_dump(mode="json")
